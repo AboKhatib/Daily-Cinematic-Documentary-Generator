@@ -1,0 +1,180 @@
+{
+  "name": "Daily Cinematic Documentary Generator",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 8 * * *"
+            }
+          ]
+        }
+      },
+      "id": "74631d5f-0025-47f5-9ef6-2c7cb860cd32",
+      "name": "Daily Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [
+        -656,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "chat",
+        "model": "gpt-4o",
+        "options": {
+          "maxTokens": 512,
+          "temperature": 0.85
+        },
+        "requestOptions": {}
+      },
+      "id": "8f25ddee-e351-446b-abf5-14fc71ee5154",
+      "name": "OpenAI Write Script",
+      "type": "n8n-nodes-base.openAi",
+      "typeVersion": 1,
+      "position": [
+        -448,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.elevenlabs.io/v1/text-to-speech/YOUR_ELEVENLABS_VOICE_ID",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "xi-api-key",
+              "value": "YOUR_ELEVENLABS_API_KEY"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Accept",
+              "value": "audio/mpeg"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={\n  \"text\": {{ JSON.stringify($('OpenAI Write Script').item.json.message.content) }},\n  \"model_id\": \"eleven_multilingual_v2\",\n  \"voice_settings\": {\n    \"stability\": 0.75,\n    \"similarity_boost\": 0.85,\n    \"style\": 0.40,\n    \"use_speaker_boost\": true\n  }\n}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "id": "711d24ab-0660-4388-8e65-65899fa7ae68",
+      "name": "ElevenLabs Generate Voiceover",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        -224,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "YOUR_TELEGRAM_CHAT_ID",
+        "text": "=🎬 *Daily Documentary Script — {{ $now.toFormat('MMMM d, yyyy') }}*\n\n📜 *Script:*\n{{ $('OpenAI Write Script').item.json.message.content }}\n\n---\n✅ Approve or ✏️ Edit before publishing.",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "e070697f-bfc7-4580-9d97-d903c7e320e1",
+      "name": "Telegram Send Script",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "1a679783-f1f7-46e4-b169-4c6521ba2130"
+    },
+    {
+      "parameters": {
+        "operation": "sendDocument",
+        "chatId": "YOUR_TELEGRAM_CHAT_ID",
+        "binaryData": true,
+        "additionalFields": {
+          "caption": "=🎙️ Voiceover audio for {{ $now.toFormat('MMMM d, yyyy') }} — Ready for review.",
+          "fileName": "=documentary_voiceover_{{ $now.toFormat('yyyy-MM-dd') }}.mp3",
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "f1c7f1c4-7cd5-4659-905d-d72ab1c51d22",
+      "name": "Telegram Send Audio",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        0,
+        224
+      ],
+      "webhookId": "c3e8e2e4-dd84-4cdd-8d4c-b316d388f422"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Daily Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "OpenAI Write Script",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Write Script": {
+      "main": [
+        [
+          {
+            "node": "ElevenLabs Generate Voiceover",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ElevenLabs Generate Voiceover": {
+      "main": [
+        [
+          {
+            "node": "Telegram Send Script",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Telegram Send Audio",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "c8f11408-508e-486d-8f28-d778da9d62ec",
+  "meta": {
+    "instanceId": "869ac2fb4f384629b73fcfb653e7853b6a17cc62a8cfbd2f7de238f135b53ba6"
+  },
+  "nodeGroups": [],
+  "id": "cuMkpAQMDICRFuFg",
+  "tags": []
+}
